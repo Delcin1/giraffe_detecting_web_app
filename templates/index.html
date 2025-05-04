@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Детекция жирафов с YOLO11</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #4CAF50;
+            --secondary-color: #2E7D32;
+            --accent-color: #8BC34A;
+            --background-color: #f5f5f5;
+            --card-color: #ffffff;
+            --text-color: #333333;
+            --border-radius: 12px;
+            --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        body {
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px 0;
+            background-color: var(--card-color);
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+        }
+        
+        h1 {
+            color: var(--secondary-color);
+            margin: 0;
+            font-size: 2.2rem;
+        }
+        
+        .tab-container {
+            display: flex;
+            margin-bottom: 20px;
+        }
+        
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            background-color: #e0e0e0;
+            border-radius: var(--border-radius) var(--border-radius) 0 0;
+            margin-right: 5px;
+        }
+        
+        .tab.active {
+            background-color: var(--primary-color);
+            color: white;
+        }
+        
+        .tab-content {
+            display: none;
+            background-color: var(--card-color);
+            padding: 20px;
+            border-radius: 0 var(--border-radius) var(--border-radius) var(--border-radius);
+            box-shadow: var(--box-shadow);
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .upload-section {
+            margin-bottom: 30px;
+        }
+        
+        .upload-form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .file-input {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .file-input label {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 12px 20px;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            transition: background-color 0.3s;
+            display: inline-block;
+            font-weight: 500;
+        }
+        
+        .file-input label:hover {
+            background-color: var(--secondary-color);
+        }
+        
+        .file-input input[type="file"] {
+            display: none;
+        }
+        
+        .file-name {
+            font-size: 0.9rem;
+            color: #666;
+        }
+        
+        button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: background-color 0.3s;
+        }
+        
+        button:hover {
+            background-color: var(--secondary-color);
+        }
+        
+        .result-section {
+            margin-bottom: 30px;
+        }
+        
+        .result-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+        
+        .media-container {
+            width: 100%;
+            max-width: 800px;
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .media-container img, 
+        .media-container video {
+            width: 100%;
+            display: block;
+        }
+        
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            width: 100%;
+        }
+        
+        .metric-card {
+            background-color: #f9f9f9;
+            padding: 15px;
+            border-radius: var(--border-radius);
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+        
+        .metric-card h3 {
+            margin-top: 0;
+            color: var(--secondary-color);
+            font-size: 1rem;
+        }
+        
+        .metric-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary-color);
+            margin: 10px 0;
+        }
+        
+        .plots-section {
+            margin-bottom: 30px;
+        }
+        
+        .plots-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 25px;
+            margin-top: 20px;
+        }
+        
+        .plot-card {
+            background-color: #f9f9f9;
+            padding: 15px;
+            border-radius: var(--border-radius);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+        
+        .plot-card h3 {
+            margin-top: 0;
+            color: var(--secondary-color);
+            text-align: center;
+        }
+        
+        .plot-card img {
+            width: 100%;
+            border-radius: 8px;
+        }
+        
+        .error-message {
+            color: #d32f2f;
+            background-color: #fde7e7;
+            padding: 15px;
+            border-radius: var(--border-radius);
+            margin-top: 15px;
+            display: none;
+        }
+        
+        .history-section table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .history-section th, 
+        .history-section td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .history-section th {
+            background-color: var(--primary-color);
+            color: white;
+        }
+        
+        .history-section tr:hover {
+            background-color: #f5f5f5;
+        }
+        
+        .action-btn {
+            padding: 6px 12px;
+            font-size: 0.9rem;
+        }
+        
+        @media (max-width: 768px) {
+            .plots-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .metrics {
+                grid-template-columns: 1fr;
+            }
+            
+            .history-section table {
+                display: block;
+                overflow-x: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🦒 Детекция жирафов с YOLO11</h1>
+            <p>Загрузите изображение или видео для анализа</p>
+        </header>
+        
+        <div class="tab-container">
+            <div class="tab active" onclick="switchTab('upload-tab')">Загрузка файла</div>
+            <div class="tab" onclick="switchTab('history-tab')">История запросов</div>
+        </div>
+        
+        <div id="upload-tab" class="tab-content active">
+            <section class="upload-section">
+                <form id="uploadForm" class="upload-form" enctype="multipart/form-data">
+                    <div class="file-input">
+                        <label for="fileInput">Выбрать файл</label>
+                        <input type="file" id="fileInput" name="file" accept="image/*, video/*" required>
+                        <span class="file-name" id="fileName">Файл не выбран</span>
+                    </div>
+                    <button type="submit">Анализировать</button>
+                    <div class="error-message" id="errorMessage"></div>
+                </form>
+            </section>
+            
+            <section class="result-section" id="resultSection" style="display: none;">
+                <h2>Результаты анализа</h2>
+                <div class="result-container">
+                    <div class="media-container">
+                        <img id="outputImage" style="display: none;">
+                        <video id="outputVideo" controls style="display: none;"></video>
+                    </div>
+                    
+                    <div class="metrics">
+                        <div class="metric-card">
+                            <h3>Обнаружено жирафов</h3>
+                            <div class="metric-value" id="count">0</div>
+                        </div>
+                        <div class="metric-card">
+                            <h3>Средняя уверенность</h3>
+                            <div class="metric-value" id="avgConfidence">0</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            <section class="plots-section" id="plotsSection" style="display: none;">
+                <h2>Визуализация метрик</h2>
+                <div class="plots-container" id="plotsContainer"></div>
+            </section>
+        </div>
+        
+        <div id="history-tab" class="tab-content">
+            <section class="history-section">
+                <h2>История запросов</h2>
+                <div id="historyLoading">Загрузка истории...</div>
+                <table id="historyTable" style="display: none;">
+                    <thead>
+                        <tr>
+                            <th>Дата и время</th>
+                            <th>Файл</th>
+                            <th>Жирафов</th>
+                            <th>Уверенность</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historyBody"></tbody>
+                </table>
+            </section>
+        </div>
+    </div>
+
+    <script>
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            document.querySelector(`.tab[onclick="switchTab('${tabId}')"]`).classList.add('active');
+            document.getElementById(tabId).classList.add('active');
+            
+            if (tabId === 'history-tab') {
+                loadHistory();
+            }
+        }
+        
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            const fileName = e.target.files[0] ? e.target.files[0].name : 'Файл не выбран';
+            document.getElementById('fileName').textContent = fileName;
+        });
+        
+        document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const errorElement = document.getElementById('errorMessage');
+            const resultSection = document.getElementById('resultSection');
+            const plotsSection = document.getElementById('plotsSection');
+            
+            errorElement.style.display = 'none';
+            resultSection.style.display = 'none';
+            plotsSection.style.display = 'none';
+            
+            try {
+                const response = await fetch('/', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Ошибка сервера');
+                }
+                
+                const result = await response.json();
+                
+                const outputImage = document.getElementById('outputImage');
+                const outputVideo = document.getElementById('outputVideo');
+                
+                if (result.file_type === 'image') {
+                    outputImage.src = result.result_path;
+                    outputImage.style.display = 'block';
+                    outputVideo.style.display = 'none';
+                } else if (result.file_type === 'video') {
+                    outputVideo.src = result.result_path;
+                    outputVideo.style.display = 'block';
+                    outputImage.style.display = 'none';
+                }
+                
+                document.getElementById('count').textContent = result.total_unique_giraffes || 0;
+                document.getElementById('avgConfidence').textContent = 
+                    result.avg_confidence ? result.avg_confidence.toFixed(2) : '0.00';
+                
+                if (result.plots) {
+                    displayPlots(result.plots);
+                    plotsSection.style.display = 'block';
+                }
+                
+                resultSection.style.display = 'block';
+                
+                loadHistory();
+                
+            } catch (error) {
+                errorElement.textContent = error.message;
+                errorElement.style.display = 'block';
+                console.error(error);
+            }
+        });
+        
+        function displayPlots(plots) {
+            const container = document.getElementById('plotsContainer');
+            container.innerHTML = '';
+            
+            const plotTitles = {
+                'conf_hist': 'Распределение уверенности модели',
+                'box_sizes': 'Размеры обнаруженных объектов',
+                'frames': 'Количество обнаружений по кадрам'
+            };
+            
+            for (const [plotKey, plotData] of Object.entries(plots)) {
+                if (plotData) {
+                    const plotCard = document.createElement('div');
+                    plotCard.className = 'plot-card';
+                    plotCard.innerHTML = `
+                        <h3>${plotTitles[plotKey] || plotKey}</h3>
+                        <img src="data:image/png;base64,${plotData}">
+                    `;
+                    container.appendChild(plotCard);
+                }
+            }
+        }
+        
+        async function loadHistory() {
+            const loadingElement = document.getElementById('historyLoading');
+            const tableElement = document.getElementById('historyTable');
+            const tbodyElement = document.getElementById('historyBody');
+            
+            loadingElement.style.display = 'block';
+            tableElement.style.display = 'none';
+            tbodyElement.innerHTML = '';
+            
+            try {
+                const response = await fetch('/history');
+                if (!response.ok) throw new Error('Ошибка загрузки истории');
+                
+                const history = await response.json();
+                
+                if (history.length === 0) {
+                    loadingElement.textContent = 'История запросов пуста';
+                    return;
+                }
+                
+                history.reverse().forEach(item => {
+                    const row = document.createElement('tr');
+                    
+                    row.innerHTML = `
+                        <td>${item.timestamp}</td>
+                        <td>${item.request.filename}</td>
+                        <td>${item.result.total_unique_giraffes}</td>
+                        <td>${item.result.avg_confidence?.toFixed(2) || '0.00'}</td>
+                        <td>
+                            <button class="action-btn" onclick="generateReport('${item.timestamp}')">
+                                Скачать PDF
+                            </button>
+                        </td>
+                    `;
+                    
+                    tbodyElement.appendChild(row);
+                });
+                
+                loadingElement.style.display = 'none';
+                tableElement.style.display = 'table';
+                
+            } catch (error) {
+                loadingElement.textContent = `Ошибка: ${error.message}`;
+                console.error(error);
+            }
+        }
+        
+        async function generateReport(timestamp) {
+            try {
+                const response = await fetch(`/generate_report/${encodeURIComponent(timestamp)}`);
+                if (!response.ok) throw new Error('Ошибка генерации отчета');
+                
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `report_${timestamp}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+                
+            } catch (error) {
+                alert(`Ошибка при генерации отчета: ${error.message}`);
+                console.error(error);
+            }
+        }
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            loadHistory();
+        });
+    </script>
+</body>
+</html>
